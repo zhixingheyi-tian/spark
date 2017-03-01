@@ -346,6 +346,8 @@ package object config {
     .timeConf(TimeUnit.MILLISECONDS)
     .createWithDefault(Long.MaxValue)
 
+  // TODO: zhankun add FPGA related options key string here
+
   // The list of cache-related config entries. This is used by Client and the AM to clean
   // up the environment so that these settings do not appear on the web UI.
   private[yarn] val CACHE_CONFIGS = Seq(
