@@ -41,6 +41,10 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   var master: String = null
   var deployMode: String = null
   // TODO: zhankun seems we can add executor FPGA related options here
+//  var executorFpgaType: String = null;
+//  var executorFpgaIp: String = null;
+//  var executorFpgaShare: String = null;
+
   var executorMemory: String = null
   var executorCores: String = null
   var totalExecutorCores: String = null
@@ -169,6 +173,15 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
       .orElse(sparkProperties.get("spark.executor.cores"))
       .orElse(env.get("SPARK_EXECUTOR_CORES"))
       .orNull
+//    executorFpgaIp = Option(executorFpgaIp)
+//      .orElse(sparkProperties.get("spark.executor.fpga.ip"))
+//      .orNull
+//    executorFpgaType = Option(executorFpgaType)
+//      .orElse(sparkProperties.get("spark.executor.fpga.type"))
+//      .orNull
+//    executorFpgaShare = Option(executorFpgaShare)
+//      .orElse(sparkProperties.get("spark.executor.fpga.share"))
+//      .orNull
     totalExecutorCores = Option(totalExecutorCores)
       .orElse(sparkProperties.get("spark.cores.max"))
       .orNull
@@ -417,7 +430,11 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
         // Since sparkProperties is hashmap. we need to
         // find a workaround to support same key of FPGA-IP opition
         val (confName, confValue) = SparkSubmit.parseSparkConfProperty(value)
-        sparkProperties(confName) = confValue
+        if (sparkProperties.contains(confName)) {
+          sparkProperties(confName) += "," + confValue
+        } else {
+          sparkProperties(confName) = confValue
+        }
 
       case PROXY_USER =>
         proxyUser = value
