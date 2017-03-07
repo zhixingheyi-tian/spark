@@ -17,7 +17,8 @@
 
 package org.apache.spark.deploy.yarn
 
-import java.util.Collections
+import java.util
+import java.util.{Collections, UUID}
 import java.util.concurrent._
 import java.util.regex.Pattern
 
@@ -25,13 +26,11 @@ import scala.collection.mutable
 import scala.collection.mutable.{ArrayBuffer, HashMap, HashSet, Queue}
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
-
 import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.log4j.{Level, Logger}
-
 import org.apache.spark.{SecurityManager, SparkConf, SparkException}
 import org.apache.spark.deploy.yarn.YarnSparkHadoopUtil._
 import org.apache.spark.deploy.yarn.config._
@@ -137,7 +136,21 @@ private[yarn] class YarnAllocator(
   // Resource capability requested for each executors
   // TODO: zhankun add this with FPGA parameters
   // Get the FPGA info from sparkConf and feed the newInstance API
-  private[yarn] val resource = Resource.newInstance(executorMemory + memoryOverhead, executorCores)
+  protected val executorFpgaType = sparkConf.get(EXECUTOR_FPGA_TYPE)
+  protected val executorFpgaIps = sparkConf.get(EXECUTOR_FPGA_IP)
+  protected val executorFpgaShare = sparkConf.get(EXECUTOR_FPGA_SHARE)
+  logInfo("yuqiang: fpgaType " + executorFpgaType + " fpgaIps " + executorFpgaIps + " fpgaShare " + executorFpgaShare)
+
+  private val fpgaSlots = new util.HashSet[FPGASlot]()
+  val fpgaIps = executorFpgaIps.split(",")
+  for(fpgaIp <- fpgaIps) {
+    val fpgaIpArr = fpgaIp.split(":")
+    val count = fpgaIpArr(1).toInt
+    for(i <- 1 to count) {
+      fpgaSlots.add(FPGASlot.newInstance(FPGAType.valueOf(executorFpgaType), UUID.randomUUID().toString, fpgaIpArr(0)))
+    }
+  }
+  private[yarn] val resource = Resource.newInstance(executorMemory + memoryOverhead, executorCores, fpgaSlots)
 
   private val launcherPool = ThreadUtils.newDaemonCachedThreadPool(
     "ContainerLauncher", sparkConf.get(CONTAINER_LAUNCH_MAX_THREADS))
