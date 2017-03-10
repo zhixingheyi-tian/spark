@@ -152,6 +152,8 @@ class SparkSubmitSuite
     val clArgs = Seq(
       "--master", "yarn",
       "--conf", "spark.submit.deployMode=client",
+      "--conf", "spark.executor.fpga.ip=1111:1",
+      "--conf", "spark.executor.fpga.ip=2222:2",
       "--class", "org.SomeClass",
       "thejar.jar"
     )

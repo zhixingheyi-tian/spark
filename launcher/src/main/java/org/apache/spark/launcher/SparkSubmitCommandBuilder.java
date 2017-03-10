@@ -429,7 +429,11 @@ class SparkSubmitCommandBuilder extends AbstractCommandBuilder {
         case CONF:
           String[] setConf = value.split("=", 2);
           checkArgument(setConf.length == 2, "Invalid argument to %s: %s", CONF, value);
-          conf.put(setConf[0], setConf[1]);
+          if(conf.containsKey(setConf[0])) {
+            conf.put(setConf[0], conf.get(setConf[0]) + "," + setConf[1]);
+          } else {
+            conf.put(setConf[0], setConf[1]);
+          }
           break;
         case CLASS:
           // The special classes require some special command line handling, since they allow

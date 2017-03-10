@@ -346,6 +346,21 @@ package object config {
     .timeConf(TimeUnit.MILLISECONDS)
     .createWithDefault(Long.MaxValue)
 
+  // TODO: zhankun add FPGA related options key string here
+  private[spark] val EXECUTOR_FPGA_TYPE = ConfigBuilder("spark.executor.fpga.type")
+    .internal()
+    .stringConf
+    .createWithDefault("")
+
+  private[spark] val EXECUTOR_FPGA_IP = ConfigBuilder("spark.executor.fpga.ip")
+    .internal()
+    .stringConf
+    .createWithDefault("")
+
+  private[spark] val EXECUTOR_FPGA_SHARE = ConfigBuilder("spark.executor.fpga.share")
+    .booleanConf
+    .createWithDefault(false)
+
   // The list of cache-related config entries. This is used by Client and the AM to clean
   // up the environment so that these settings do not appear on the web UI.
   private[yarn] val CACHE_CONFIGS = Seq(
