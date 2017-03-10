@@ -430,11 +430,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
         // Since sparkProperties is hashmap. we need to
         // find a workaround to support same key of FPGA-IP opition
         val (confName, confValue) = SparkSubmit.parseSparkConfProperty(value)
-        if (sparkProperties.contains(confName)) {
-          sparkProperties(confName) += "," + confValue
-        } else {
-          sparkProperties(confName) = confValue
-        }
+        sparkProperties(confName) = confValue
 
       case PROXY_USER =>
         proxyUser = value
