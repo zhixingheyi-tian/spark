@@ -30,7 +30,6 @@ import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.AMRMClient
 import org.apache.hadoop.yarn.client.api.AMRMClient.ContainerRequest
 import org.apache.hadoop.yarn.conf.YarnConfiguration
-import org.apache.hadoop.yarn.util.RackResolver
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SecurityManager, SparkConf, SparkException}
 import org.apache.spark.deploy.yarn.YarnSparkHadoopUtil._
@@ -64,15 +63,11 @@ private[yarn] class YarnAllocator(
     amClient: AMRMClient[ContainerRequest],
     appAttemptId: ApplicationAttemptId,
     securityMgr: SecurityManager,
-    localResources: Map[String, LocalResource])
+    localResources: Map[String, LocalResource],
+    resolver: SparkRackResolver)
   extends Logging {
 
   import YarnAllocator._
-
-  // RackResolver logs an INFO message whenever it resolves a rack, which is way too often.
-  if (Logger.getLogger(classOf[RackResolver]).getLevel == null) {
-    Logger.getLogger(classOf[RackResolver]).setLevel(Level.WARN)
-  }
 
   // Visible for testing.
   val allocatedHostToContainersMap = new HashMap[String, collection.mutable.Set[ContainerId]]
@@ -139,8 +134,6 @@ private[yarn] class YarnAllocator(
   // Number of cores per executor.
   protected val executorCores = sparkConf.get(EXECUTOR_CORES)
   // Resource capability requested for each executors
-  // TODO: zhankun add this with FPGA parameters
-  // Get the FPGA info from sparkConf and feed the newInstance API
   protected val executorFpgaType = sparkConf.get(EXECUTOR_FPGA_TYPE)
   protected val executorFpgaIps = sparkConf.get(EXECUTOR_FPGA_IP)
   protected val executorFpgaShare = sparkConf.get(EXECUTOR_FPGA_SHARE)
@@ -174,7 +167,7 @@ private[yarn] class YarnAllocator(
 
   // A container placement strategy based on pending tasks' locality preference
   private[yarn] val containerPlacementStrategy =
-    new LocalityPreferredContainerPlacementStrategy(sparkConf, conf, resource)
+    new LocalityPreferredContainerPlacementStrategy(sparkConf, conf, resource, resolver)
 
   /**
    * Use a different clock for YarnAllocator. This is mainly used for testing.
@@ -439,7 +432,7 @@ private[yarn] class YarnAllocator(
     // Match remaining by rack
     val remainingAfterRackMatches = new ArrayBuffer[Container]
     for (allocatedContainer <- remainingAfterHostMatches) {
-      val rack = RackResolver.resolve(conf, allocatedContainer.getNodeId.getHost).getNetworkLocation
+      val rack = resolver.resolve(conf, allocatedContainer.getNodeId.getHost)
       matchContainerToRequest(allocatedContainer, rack, containersToUse,
         remainingAfterRackMatches)
     }
@@ -509,7 +502,8 @@ private[yarn] class YarnAllocator(
       val containerId = container.getId
       val executorId = executorIdCounter.toString
       assert(container.getResource.getMemory >= resource.getMemory)
-      logInfo(s"Launching container $containerId on host $executorHostname")
+      logInfo(s"Launching container $containerId on host $executorHostname " +
+        s"for executor with ID $executorId")
 
       def updateInternalState(): Unit = synchronized {
         numExecutorsRunning += 1

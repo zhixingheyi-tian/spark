@@ -40,11 +40,6 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
   extends SparkSubmitArgumentsParser {
   var master: String = null
   var deployMode: String = null
-  // TODO: zhankun seems we can add executor FPGA related options here
-//  var executorFpgaType: String = null;
-//  var executorFpgaIp: String = null;
-//  var executorFpgaShare: String = null;
-
   var executorMemory: String = null
   var executorCores: String = null
   var totalExecutorCores: String = null
@@ -204,6 +199,7 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
       .orNull
     numExecutors = Option(numExecutors)
       .getOrElse(sparkProperties.get("spark.executor.instances").orNull)
+    queue = Option(queue).orElse(sparkProperties.get("spark.yarn.queue")).orNull
     keytab = Option(keytab).orElse(sparkProperties.get("spark.yarn.keytab")).orNull
     principal = Option(principal).orElse(sparkProperties.get("spark.yarn.principal")).orNull
 
