@@ -346,7 +346,6 @@ package object config {
     .timeConf(TimeUnit.MILLISECONDS)
     .createWithDefault(Long.MaxValue)
 
-  // TODO: zhankun add FPGA related options key string here
   private[spark] val EXECUTOR_FPGA_TYPE = ConfigBuilder("spark.executor.fpga.type")
     .internal()
     .stringConf

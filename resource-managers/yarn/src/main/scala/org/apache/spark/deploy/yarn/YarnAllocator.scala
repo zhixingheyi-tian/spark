@@ -134,8 +134,6 @@ private[yarn] class YarnAllocator(
   // Number of cores per executor.
   protected val executorCores = sparkConf.get(EXECUTOR_CORES)
   // Resource capability requested for each executors
-  // TODO: zhankun add this with FPGA parameters
-  // Get the FPGA info from sparkConf and feed the newInstance API
   protected val executorFpgaType = sparkConf.get(EXECUTOR_FPGA_TYPE)
   protected val executorFpgaIps = sparkConf.get(EXECUTOR_FPGA_IP)
   protected val executorFpgaShare = sparkConf.get(EXECUTOR_FPGA_SHARE)
