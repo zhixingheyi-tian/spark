@@ -174,15 +174,6 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
       .orElse(sparkProperties.get("spark.executor.cores"))
       .orElse(env.get("SPARK_EXECUTOR_CORES"))
       .orNull
-//    executorFpgaIp = Option(executorFpgaIp)
-//      .orElse(sparkProperties.get("spark.executor.fpga.ip"))
-//      .orNull
-//    executorFpgaType = Option(executorFpgaType)
-//      .orElse(sparkProperties.get("spark.executor.fpga.type"))
-//      .orNull
-//    executorFpgaShare = Option(executorFpgaShare)
-//      .orElse(sparkProperties.get("spark.executor.fpga.share"))
-//      .orNull
     totalExecutorCores = Option(totalExecutorCores)
       .orElse(sparkProperties.get("spark.cores.max"))
       .orNull
@@ -428,9 +419,6 @@ private[deploy] class SparkSubmitArguments(args: Seq[String], env: Map[String, S
         repositories = value
 
       case CONF =>
-        // TODO: zhankun user's spark-submit --conf spark.yarn.executor.fpga-* will be saved here
-        // Since sparkProperties is hashmap. we need to
-        // find a workaround to support same key of FPGA-IP opition
         val (confName, confValue) = SparkSubmit.parseSparkConfProperty(value)
         sparkProperties(confName) = confValue
 
