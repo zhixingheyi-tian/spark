@@ -20,7 +20,11 @@ package org.apache.spark.mllib.linalg
 import com.github.fommil.netlib.{BLAS => NetlibBLAS, F2jBLAS}
 import com.github.fommil.netlib.BLAS.{getInstance => NativeBLAS}
 
+import org.apache.spark.mllib.linalg.fpga.FpgaBLAS
+
 import org.apache.spark.internal.Logging
+import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
  * BLAS routines for MLlib's vectors and matrices.
@@ -29,6 +33,7 @@ private[spark] object BLAS extends Serializable with Logging {
 
   @transient private var _f2jBLAS: NetlibBLAS = _
   @transient private var _nativeBLAS: NetlibBLAS = _
+  @transient private var _fpgaBLAS:FpgaBLAS = _
 
   // For level-1 routines, we use Java implementation.
   private def f2jBLAS: NetlibBLAS = {
@@ -236,6 +241,13 @@ private[spark] object BLAS extends Serializable with Logging {
     _nativeBLAS
   }
 
+  private def fpgaBLAS:FpgaBLAS = {
+    if (_fpgaBLAS == null){
+      _fpgaBLAS = new FpgaBLAS()
+    }
+    _fpgaBLAS
+  }
+
   /**
    * Adds alpha * v * v.t to a matrix in-place. This is the same as BLAS's ?SPR.
    *
@@ -388,8 +400,35 @@ private[spark] object BLAS extends Serializable with Logging {
       s"The rows of C don't match the rows of A. C: ${C.numRows}, A: ${A.numRows}")
     require(B.numCols == C.numCols,
       s"The columns of C don't match the columns of B. C: ${C.numCols}, A: ${B.numCols}")
-    nativeBLAS.dgemm(tAstr, tBstr, A.numRows, B.numCols, A.numCols, alpha, A.values, lda,
-      B.values, ldb, beta, C.values, C.numRows)
+
+    logDebug("gemm: Use FPGA to calculate GEMM ... begin")
+    logDebug("gemm: FPGA Gemm Parameter Table")
+    logDebug("gemm: Matrix A Transpose Information = " + tAstr)
+    logDebug("gemm: Matrix A Transpose Information = " + tBstr)
+    logDebug("gemm: A.numRows = " + A.numRows + " A.numCols = " + A.numCols)
+    logDebug("gemm: B.numRows = " + B.numRows + " B.numCols = " + B.numCols)
+    logDebug("gemm: Parameter Alpha = " + alpha + " Parameter Beta = " + beta)
+    var maValue:String = ""
+    A.values.foreach(a => maValue = maValue + a.toString + " ")
+    var mbValue:String = ""
+    B.values.foreach(b => mbValue = mbValue + b.toString + " ")
+    logDebug("gemm: Matrix A Values =" + maValue)
+    logDebug("gemm: Matrix B Values =" + mbValue)
+    
+    var Avalues = A.values.map(new java.lang.Double(_)).toBuffer.asJava
+    var Bvalues = B.values.map(new java.lang.Double(_)).toBuffer.asJava
+    var Cvalues = C.values.map(new java.lang.Double(_)).toBuffer.asJava
+    var Cresults = fpgaBLAS.dgemm(tAstr, tBstr, A.numRows, B.numCols, A.numCols, alpha, Avalues, lda,
+        Bvalues, ldb, beta, Cvalues, C.numRows).asScala.map(_.doubleValue)
+    var i:Int = 0
+    var j:Int = 0
+    for (i <- 0 to C.numRows -1){
+      for (j <- 0 to B.numCols -1){ 
+        C.update(i,j,Cresults.apply(i*B.numCols+j))
+      }
+    }
+    logDebug("gemm: Use FPGA to calculate GEMM ... end")
+
   }
 
   /**
