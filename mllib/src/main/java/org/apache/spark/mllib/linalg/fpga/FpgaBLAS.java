@@ -28,11 +28,18 @@ import java.util.List;
 public class FpgaBLAS implements Serializable{
 
     private ZMQ.Context context = ZMQ.context(1);
+    private ZMQ.Socket requester = context.socket(ZMQ.DEALER);
+
+    public FpgaBLAS(){
+      requester.connect("tcp://localhost:5556");
+    }
+
+    /*public ~FpgaBLAS(){
+      requester.close();
+      context.term();
+    }*/
 
     public List<Double> dgemm(String tAstr, String tBstr, int AnumRows, int BnumCols, int  AnumCols, double alpha, List<Double> Avalues, int lda,List<Double> Bvalues, int ldb, double beta, List<Double> Cvalues, int CnumRows) throws Exception {
-
-        ZMQ.Socket requester = context.socket(ZMQ.DEALER);
-        requester.connect("tcp://localhost:5556");
 
         Matrix.Builder matrixA = Matrix.newBuilder();
         matrixA.setDimensionX(AnumRows);
@@ -59,9 +66,37 @@ public class FpgaBLAS implements Serializable{
         byte[] reply = requester.recv(0);
         Matrix matrixReply = Matrix.parseFrom(reply);
         java.util.List<java.lang.Double> replyValues = matrixReply.getElementList();
-        
-        requester.close();
-        context.term();
+
+        return replyValues;
+    }
+
+    public List<Double> dgemv(String tAstr,int AnumRows, int AnumCols, double alpha, List<Double> Avalues, int XnumRows,List<Double> Xvalues, int XnumCols, double beta, List<Double> Yvalues, int YnumCols) throws Exception {
+
+        Matrix.Builder matrixA = Matrix.newBuilder();
+        matrixA.setDimensionX(AnumRows);
+        matrixA.setDimensionY(AnumCols);
+        for (int i=0;i<Avalues.size();i++){matrixA.addElement(Avalues.get(i));}
+
+        Matrix.Builder matrixB = Matrix.newBuilder();
+        matrixB.setDimensionX(AnumCols);
+        matrixB.setDimensionY(XnumCols);
+        for (int i=0;i<Xvalues.size();i++){matrixB.addElement(Xvalues.get(i));}
+
+        Matrix.Builder matrixC = Matrix.newBuilder();
+        matrixC.setDimensionX(AnumRows);
+        matrixC.setDimensionY(YnumCols);
+        for (int i=0;i<Yvalues.size();i++){matrixC.addElement(Yvalues.get(i));}
+
+        MatrixGemm.Builder matrixGemm = MatrixGemm.newBuilder();
+        matrixGemm.setMatrixA(matrixA.build());
+        matrixGemm.setMatrixB(matrixB.build());
+        matrixGemm.setMatrixC(matrixC.build());
+
+        requester.send(matrixGemm.build().toByteArray(), 0);
+
+        byte[] reply = requester.recv(0);
+        Matrix matrixReply = Matrix.parseFrom(reply);
+        java.util.List<java.lang.Double> replyValues = matrixReply.getElementList();
 
         return replyValues;
     }

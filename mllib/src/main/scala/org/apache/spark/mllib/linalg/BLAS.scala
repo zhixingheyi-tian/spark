@@ -595,8 +595,16 @@ private[spark] object BLAS extends Serializable with Logging {
     val tStrA = if (A.isTransposed) "T" else "N"
     val mA = if (!A.isTransposed) A.numRows else A.numCols
     val nA = if (!A.isTransposed) A.numCols else A.numRows
-    nativeBLAS.dgemv(tStrA, mA, nA, alpha, A.values, mA, x.values, 1, beta,
-      y.values, 1)
+
+    logDebug("gemm: Use FPGA to calculate GEMM ... begin")
+    var Avalues = A.values.map(new java.lang.Double(_)).toBuffer.asJava
+    var xvalues = x.values.map(new java.lang.Double(_)).toBuffer.asJava
+    var yvalues = y.values.map(new java.lang.Double(_)).toBuffer.asJava
+
+    var yresults = fpgaBLAS.dgemv(tStrA, mA, nA, alpha, Avalues, mA, xvalues, 1, beta, yvalues, 1).asScala.map(_.doubleValue)
+    var i:Int = 0
+    for (i <- 0 to mA -1){ y.values(i) = yresults.apply(i) }
+    logDebug("gemm: Use FPGA to calculate GEMV ... end")
   }
 
   /**
