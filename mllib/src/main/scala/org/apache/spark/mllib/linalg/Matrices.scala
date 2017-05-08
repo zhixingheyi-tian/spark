@@ -104,9 +104,6 @@ sealed trait Matrix extends Serializable {
   def multiply(y: DenseMatrix): DenseMatrix = {
     val C: DenseMatrix = DenseMatrix.zeros(numRows, y.numCols)
     BLAS.gemm(1.0, this, y, 0.0, C)
-    var mcValue:String = ""
-    C.values.foreach(a => mcValue = mcValue + a.toString + " ")
-    println("gemm: Matrix Multiply Result Values =" + mcValue)
     C
   }
 
