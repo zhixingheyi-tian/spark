@@ -6,12 +6,12 @@ Spark will support to specify FPGA resource when user submit application to Yarn
 
 FPGA on Yarn is required here, please clone and install it first.
 
-	git clone https://github.com/intel-hadoop/hadoop.git -b YARN-3926
+	git clone https://github.com/intel-hadoop/hadoop.git -b YARN-5983
 	mvn clean install -DskipTests -Pdist,native
 
 Build spark on yarn
 
-	./build/mvn -Pyarn -Phadoop-3.0 -Dhadoop.version=3.0.0-alpha2-SNAPSHOT2 -DskipTests clean package
+	./build/mvn -Pyarn -Phadoop-3.0 -Dhadoop.version=3.0.0-alpha3-SNAPSHOT -DskipTests clean package
 
 ## Usage
 
