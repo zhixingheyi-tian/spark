@@ -241,10 +241,14 @@ class KMeans private (
       logWarning("The input data is not directly cached, which may hurt performance if its"
         + " parent RDDs are also uncached.")
     }
+    val dataStoreLevel = data.getStorageLevel
+    logInfo(s"data is stored at $dataStoreLevel")
 
     // Compute squared norms and cache them.
     val norms = data.map(Vectors.norm(_, 2.0))
-    norms.persist()
+    norms.persist(dataStoreLevel)
+    val normStoreLevel = norms.getStorageLevel
+    logInfo(s"norm is stored at $normStoreLevel")
     val zippedData = data.zip(norms).map { case (v, norm) =>
       new VectorWithNorm(v, norm)
     }

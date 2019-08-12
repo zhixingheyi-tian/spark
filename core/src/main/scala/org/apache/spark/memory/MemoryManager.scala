@@ -48,6 +48,8 @@ private[spark] abstract class MemoryManager(
   @GuardedBy("this")
   protected val offHeapStorageMemoryPool = new StorageMemoryPool(this, MemoryMode.OFF_HEAP)
   @GuardedBy("this")
+  protected val aepStorageMemoryPool = new StorageMemoryPool(this, MemoryMode.AEP)
+  @GuardedBy("this")
   protected val onHeapExecutionMemoryPool = new ExecutionMemoryPool(this, MemoryMode.ON_HEAP)
   @GuardedBy("this")
   protected val offHeapExecutionMemoryPool = new ExecutionMemoryPool(this, MemoryMode.OFF_HEAP)
@@ -61,6 +63,12 @@ private[spark] abstract class MemoryManager(
 
   offHeapExecutionMemoryPool.incrementPoolSize(maxOffHeapMemory - offHeapStorageMemory)
   offHeapStorageMemoryPool.incrementPoolSize(offHeapStorageMemory)
+
+  private[this] val aepInitialSize = conf.getSizeAsBytes("spark.memory.aep.initial.size", 0L)
+  // there are some overhead when use aep as memory
+  private[this] val aepUsableRatio = conf.getDouble("spark.memory.aep.usable.ratio", 1.0)
+  protected[this] val maxAEPMemory = (aepInitialSize * aepUsableRatio).toLong
+  aepStorageMemoryPool.incrementPoolSize(maxAEPMemory)
 
   /**
    * Total available on heap memory for storage, in bytes. This amount can vary over time,
@@ -76,12 +84,19 @@ private[spark] abstract class MemoryManager(
   def maxOffHeapStorageMemory: Long
 
   /**
+    * Total available aep memory for storage, in bytes. This amount can vary over time,
+    * depending on the MemoryManager implementation.
+    */
+  def maxAEPStorageMemory: Long
+
+  /**
    * Set the [[MemoryStore]] used by this manager to evict cached blocks.
    * This must be set after construction due to initialization ordering constraints.
    */
   final def setMemoryStore(store: MemoryStore): Unit = synchronized {
     onHeapStorageMemoryPool.setMemoryStore(store)
     offHeapStorageMemoryPool.setMemoryStore(store)
+    aepStorageMemoryPool.setMemoryStore(store)
   }
 
   /**
@@ -125,7 +140,7 @@ private[spark] abstract class MemoryManager(
       numBytes: Long,
       taskAttemptId: Long,
       memoryMode: MemoryMode): Unit = synchronized {
-    memoryMode match {
+    (memoryMode: @unchecked) match {
       case MemoryMode.ON_HEAP => onHeapExecutionMemoryPool.releaseMemory(numBytes, taskAttemptId)
       case MemoryMode.OFF_HEAP => offHeapExecutionMemoryPool.releaseMemory(numBytes, taskAttemptId)
     }
@@ -148,6 +163,7 @@ private[spark] abstract class MemoryManager(
     memoryMode match {
       case MemoryMode.ON_HEAP => onHeapStorageMemoryPool.releaseMemory(numBytes)
       case MemoryMode.OFF_HEAP => offHeapStorageMemoryPool.releaseMemory(numBytes)
+      case MemoryMode.AEP => aepStorageMemoryPool.releaseMemory(numBytes)
     }
   }
 
@@ -157,6 +173,7 @@ private[spark] abstract class MemoryManager(
   final def releaseAllStorageMemory(): Unit = synchronized {
     onHeapStorageMemoryPool.releaseAllMemory()
     offHeapStorageMemoryPool.releaseAllMemory()
+    aepStorageMemoryPool.releaseAllMemory()
   }
 
   /**
@@ -177,7 +194,7 @@ private[spark] abstract class MemoryManager(
    * Storage memory currently in use, in bytes.
    */
   final def storageMemoryUsed: Long = synchronized {
-    onHeapStorageMemoryPool.memoryUsed + offHeapStorageMemoryPool.memoryUsed
+    onHeapStorageMemoryPool.memoryUsed + offHeapStorageMemoryPool.memoryUsed + aepStorageMemoryPool.memoryUsed
   }
 
   /**
@@ -219,7 +236,7 @@ private[spark] abstract class MemoryManager(
     val cores = if (numCores > 0) numCores else Runtime.getRuntime.availableProcessors()
     // Because of rounding to next power of 2, we may have safetyFactor as 8 in worst case
     val safetyFactor = 16
-    val maxTungstenMemory: Long = tungstenMemoryMode match {
+    val maxTungstenMemory: Long = (tungstenMemoryMode: @unchecked) match {
       case MemoryMode.ON_HEAP => onHeapExecutionMemoryPool.poolSize
       case MemoryMode.OFF_HEAP => offHeapExecutionMemoryPool.poolSize
     }
@@ -232,7 +249,7 @@ private[spark] abstract class MemoryManager(
    * Allocates memory for use by Unsafe/Tungsten code.
    */
   private[memory] final val tungstenMemoryAllocator: MemoryAllocator = {
-    tungstenMemoryMode match {
+    (tungstenMemoryMode: @unchecked) match {
       case MemoryMode.ON_HEAP => MemoryAllocator.HEAP
       case MemoryMode.OFF_HEAP => MemoryAllocator.UNSAFE
     }

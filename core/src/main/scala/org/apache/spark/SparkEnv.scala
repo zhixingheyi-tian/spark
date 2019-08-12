@@ -23,9 +23,7 @@ import java.util.Locale
 
 import scala.collection.mutable
 import scala.util.Properties
-
 import com.google.common.collect.MapMaker
-
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
 import org.apache.spark.broadcast.BroadcastManager
@@ -41,6 +39,7 @@ import org.apache.spark.security.CryptoStreamUtils
 import org.apache.spark.serializer.{JavaSerializer, Serializer, SerializerManager}
 import org.apache.spark.shuffle.ShuffleManager
 import org.apache.spark.storage._
+import org.apache.spark.unsafe.VMPlatform
 import org.apache.spark.util.{RpcUtils, Utils}
 
 /**
@@ -175,6 +174,7 @@ object SparkEnv extends Logging {
     create(
       conf,
       SparkContext.DRIVER_IDENTIFIER,
+      None,
       bindAddress,
       advertiseAddress,
       Option(port),
@@ -193,6 +193,7 @@ object SparkEnv extends Logging {
   private[spark] def createExecutorEnv(
       conf: SparkConf,
       executorId: String,
+      numaNodeId: Option[Int],
       hostname: String,
       numCores: Int,
       ioEncryptionKey: Option[Array[Byte]],
@@ -200,6 +201,7 @@ object SparkEnv extends Logging {
     val env = create(
       conf,
       executorId,
+      numaNodeId,
       hostname,
       hostname,
       None,
@@ -217,6 +219,7 @@ object SparkEnv extends Logging {
   private def create(
       conf: SparkConf,
       executorId: String,
+      numaNodeId: Option[Int],
       bindAddress: String,
       advertiseAddress: String,
       port: Option[Int],
@@ -227,6 +230,27 @@ object SparkEnv extends Logging {
       mockOutputCommitCoordinator: Option[OutputCommitCoordinator] = None): SparkEnv = {
 
     val isDriver = executorId == SparkContext.DRIVER_IDENTIFIER
+
+    val vmInitialPaths = conf.get("spark.memory.ape.initial.path", "").split(",")
+    val vmInitialSize = conf.getSizeAsBytes("spark.memory.aep.initial.size", 0L)
+    if (!isDriver) {
+      // TODO improve this
+      val bindingId = numaNodeId.getOrElse(executorId.toInt + 1)
+      val path = vmInitialPaths(bindingId % 2)
+      val initPath = path + File.separator + s"executor_${executorId}" + File.pathSeparator
+      val file = new File(initPath)
+      if (file.exists() && file.isFile) {
+        file.delete()
+      }
+
+      if (!file.exists()) {
+        file.mkdirs()
+      }
+
+      require(file.isDirectory(), "AEP initialization path require a directory")
+      VMPlatform.initialize(initPath, vmInitialSize)
+      logInfo(s"AEP initialize path: ${initPath}, size: ${vmInitialSize} ")
+    }
 
     // Listener bus is only used on the driver
     if (isDriver) {

@@ -59,6 +59,7 @@ private[spark] class UnifiedMemoryManager private[memory] (
     assert(onHeapExecutionMemoryPool.poolSize + onHeapStorageMemoryPool.poolSize == maxHeapMemory)
     assert(
       offHeapExecutionMemoryPool.poolSize + offHeapStorageMemoryPool.poolSize == maxOffHeapMemory)
+    assert(aepStorageMemoryPool.poolSize == maxAEPMemory)
   }
 
   assertInvariants()
@@ -69,6 +70,10 @@ private[spark] class UnifiedMemoryManager private[memory] (
 
   override def maxOffHeapStorageMemory: Long = synchronized {
     maxOffHeapMemory - offHeapExecutionMemoryPool.memoryUsed
+  }
+
+  override def maxAEPStorageMemory: Long = synchronized {
+    maxAEPMemory
   }
 
   /**
@@ -86,7 +91,8 @@ private[spark] class UnifiedMemoryManager private[memory] (
       memoryMode: MemoryMode): Long = synchronized {
     assertInvariants()
     assert(numBytes >= 0)
-    val (executionPool, storagePool, storageRegionSize, maxMemory) = memoryMode match {
+    require(memoryMode != MemoryMode.AEP, "Currently, we don't support AEP execution memory")
+    val (executionPool, storagePool, storageRegionSize, maxMemory) = (memoryMode: @unchecked) match {
       case MemoryMode.ON_HEAP => (
         onHeapExecutionMemoryPool,
         onHeapStorageMemoryPool,
@@ -161,7 +167,13 @@ private[spark] class UnifiedMemoryManager private[memory] (
         offHeapExecutionMemoryPool,
         offHeapStorageMemoryPool,
         maxOffHeapStorageMemory)
+      case MemoryMode.AEP => (
+        null,
+        aepStorageMemoryPool,
+        maxAEPMemory
+      )
     }
+    //logInfo(s"UnifiedMemoryManger current memory in-use is $memoryMode")
     if (numBytes > maxMemory) {
       // Fail fast if the block simply won't fit
       logInfo(s"Will not store $blockId as the required space ($numBytes bytes) exceeds our " +
@@ -169,6 +181,11 @@ private[spark] class UnifiedMemoryManager private[memory] (
       return false
     }
     if (numBytes > storagePool.memoryFree) {
+      if (memoryMode == MemoryMode.AEP) {
+        // we don't want any memory borrow or eviction occur
+        return false
+      }
+
       // There is not enough free memory in the storage pool, so try to borrow free memory from
       // the execution pool.
       val memoryBorrowedFromExecution = Math.min(executionPool.memoryFree,
