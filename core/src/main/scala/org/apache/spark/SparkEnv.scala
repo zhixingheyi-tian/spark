@@ -231,7 +231,7 @@ object SparkEnv extends Logging {
 
     val isDriver = executorId == SparkContext.DRIVER_IDENTIFIER
 
-    val vmInitialPaths = conf.get("spark.memory.ape.initial.path", "").split(",")
+    val vmInitialPaths = conf.get("spark.memory.aep.initial.path", "").split(",")
     val vmInitialSize = conf.getSizeAsBytes("spark.memory.aep.initial.size", 0L)
     if (!isDriver) {
       // TODO improve this
