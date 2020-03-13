@@ -69,7 +69,14 @@ class V2SessionCatalog(catalog: SessionCatalog, conf: SQLConf)
         throw new NoSuchTableException(ident)
     }
 
-    V1Table(catalogTable)
+    val properties = catalogTable.properties
+    DataSource.lookupDataSourceV2(properties.get("provider").get, conf).map { provider =>
+      val tableOptions = DataSourceV2Utils.extractSessionConfigs(provider, conf)
+      val caseInsensitiveStringMap =
+        new CaseInsensitiveStringMap((tableOptions ++ properties).asJava)
+      DataSourceV2Utils.getTableFromProvider(provider, caseInsensitiveStringMap,
+        userSpecifiedSchema = None)
+    }.getOrElse(V1Table(catalogTable))
   }
 
   override def invalidateTable(ident: Identifier): Unit = {
