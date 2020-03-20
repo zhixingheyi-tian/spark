@@ -69,11 +69,10 @@ class V2SessionCatalog(catalog: SessionCatalog, conf: SQLConf)
         throw new NoSuchTableException(ident)
     }
 
-    val properties = catalogTable.properties
-    DataSource.lookupDataSourceV2(properties.get("provider").get, conf).map { provider =>
+    DataSource.lookupDataSourceV2(catalogTable.provider.get, conf).map { provider =>
       val tableOptions = DataSourceV2Utils.extractSessionConfigs(provider, conf)
       val caseInsensitiveStringMap =
-        new CaseInsensitiveStringMap((tableOptions ++ properties).asJava)
+        new CaseInsensitiveStringMap((tableOptions ++ catalogTable.properties).asJava)
       DataSourceV2Utils.getTableFromProvider(provider, caseInsensitiveStringMap,
         userSpecifiedSchema = None)
     }.getOrElse(V1Table(catalogTable))
