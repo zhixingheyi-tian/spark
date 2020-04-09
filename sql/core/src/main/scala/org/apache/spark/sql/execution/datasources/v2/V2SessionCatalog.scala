@@ -69,7 +69,11 @@ class V2SessionCatalog(catalog: SessionCatalog, conf: SQLConf)
         throw new NoSuchTableException(ident)
     }
 
-    DataSource.lookupDataSourceV2(catalogTable.provider.get, conf).map { provider =>
+    var provider = catalogTable.provider.get
+    if (catalogTable.provider.get.equalsIgnoreCase("parquet")) {
+      provider = "pegasus"
+    }
+    DataSource.lookupDataSourceV2(provider, conf).map { provider =>
       val tableOptions = DataSourceV2Utils.extractSessionConfigs(provider, conf)
       val caseInsensitiveStringMap =
         new CaseInsensitiveStringMap((tableOptions ++ catalogTable.properties).asJava)

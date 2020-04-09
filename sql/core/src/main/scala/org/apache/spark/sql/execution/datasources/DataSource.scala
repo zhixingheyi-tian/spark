@@ -634,7 +634,6 @@ object DataSource extends Logging {
         "org.apache.spark.sql.hive.orc.OrcFileFormat"
       case "com.databricks.spark.avro" if conf.replaceDatabricksSparkAvroEnabled =>
         "org.apache.spark.sql.avro.AvroFileFormat"
-      case name if name.equalsIgnoreCase("parquet") => "pegasus"
       case name => name
     }
     val provider2 = s"$provider1.DefaultSource"
