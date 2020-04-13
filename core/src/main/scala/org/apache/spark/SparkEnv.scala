@@ -23,9 +23,7 @@ import java.util.Locale
 
 import scala.collection.mutable
 import scala.util.Properties
-
 import com.google.common.collect.MapMaker
-
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
 import org.apache.spark.broadcast.BroadcastManager
@@ -34,6 +32,7 @@ import org.apache.spark.internal.config._
 import org.apache.spark.memory.{MemoryManager, StaticMemoryManager, UnifiedMemoryManager}
 import org.apache.spark.metrics.MetricsSystem
 import org.apache.spark.network.netty.NettyBlockTransferService
+import org.apache.spark.pmem.PersistentMemoryPlatform
 import org.apache.spark.rpc.{RpcEndpoint, RpcEndpointRef, RpcEnv}
 import org.apache.spark.scheduler.{LiveListenerBus, OutputCommitCoordinator}
 import org.apache.spark.scheduler.OutputCommitCoordinator.OutputCommitCoordinatorEndpoint
@@ -214,6 +213,7 @@ object SparkEnv extends Logging {
     env
   }
 
+  // scalastyle:off
   /**
    * Helper method to create a SparkEnv for a driver or an executor.
    */
@@ -231,6 +231,25 @@ object SparkEnv extends Logging {
       mockOutputCommitCoordinator: Option[OutputCommitCoordinator] = None): SparkEnv = {
 
     val isDriver = executorId == SparkContext.DRIVER_IDENTIFIER
+
+    val pmemInitialPaths = conf.get("spark.memory.pmem.initial.path", "").split(",")
+    val pmemInitialSize = conf.getSizeAsBytes("spark.memory.pmem.initial.size", 0L)
+    if (!isDriver) {
+      val path = pmemInitialPaths(numaNodeId.get.toInt % 2)
+      val initPath = path + File.separator + s"executor_${executorId}" + File.pathSeparator
+      val file = new File(initPath)
+      if (file.exists() && file.isFile) {
+        file.delete()
+      }
+
+      if (!file.exists()) {
+        file.mkdirs()
+      }
+
+      require(file.isDirectory(), "PMem directory is required for initialization")
+      PersistentMemoryPlatform.initialize(initPath, pmemInitialSize)
+      logInfo(s"Intel Optane PMem initialized with path: ${initPath}, size: ${pmemInitialSize} ")
+    }
 
     // Listener bus is only used on the driver
     if (isDriver) {
