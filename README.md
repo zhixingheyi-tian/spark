@@ -1,4 +1,4 @@
-# Storage extension with DCPM
+# Storage extension with DCPM Userguide
 
 ## Prerequisites
 
