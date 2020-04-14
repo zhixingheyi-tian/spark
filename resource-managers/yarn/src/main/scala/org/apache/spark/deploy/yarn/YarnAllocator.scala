@@ -163,6 +163,8 @@ private[yarn] class YarnAllocator(
   private[yarn] val containerPlacementStrategy =
     new LocalityPreferredContainerPlacementStrategy(sparkConf, conf, resource, resolver)
 
+  private[yarn] val numaManager = new NumaManager(sparkConf)
+
   def getNumExecutorsRunning: Int = runningExecutors.size()
 
   def getNumReleasedContainers: Int = releasedContainers.size()
@@ -509,9 +511,13 @@ private[yarn] class YarnAllocator(
       val executorHostname = container.getNodeId.getHost
       val containerId = container.getId
       val executorId = executorIdCounter.toString
+
+      // Set the numa id that the executor should binding.
+      val numaNodeId = numaManager.assignNumaId(containerId, executorHostname)
+
       assert(container.getResource.getMemory >= resource.getMemory)
       logInfo(s"Launching container $containerId on host $executorHostname " +
-        s"for executor with ID $executorId")
+        s"for executor with ID $executorId with numa ID $numaNodeId")
 
       def updateInternalState(): Unit = synchronized {
         runningExecutors.add(executorId)
@@ -537,6 +543,7 @@ private[yarn] class YarnAllocator(
                   sparkConf,
                   driverUrl,
                   executorId,
+                  numaNodeId,
                   executorHostname,
                   executorMemory,
                   executorCores,
@@ -657,6 +664,7 @@ private[yarn] class YarnAllocator(
         }
 
         allocatedContainerToHostMap.remove(containerId)
+        numaManager.releaseNuma(containerId, host)
       }
 
       containerIdToExecutorId.remove(containerId).foreach { eid =>
@@ -747,6 +755,51 @@ private[yarn] class YarnAllocator(
     }
 
     (localityMatched.toSeq, localityUnMatched.toSeq, localityFree.toSeq)
+  }
+
+}
+
+// scalastyle:off
+// Manage how to bind numa with an exector. No matter numa binding turn on/off
+// we should assign a numa id since Persistent Memory always be associate with a numa id
+private[yarn] class NumaManager(sparkConf: SparkConf) extends Logging {
+  private final val totalNumaNode = sparkConf.get(SPARK_YARN_NUMA_NUM)
+  private val hostToNumaIds = new ConcurrentHashMap[String, Array[Int]]()
+  private val hostToContainers = new ConcurrentHashMap[String, mutable.HashMap[ContainerId, String]]()
+
+  def assignNumaId(
+                    containerId: ContainerId,
+                    executorHostName: String): Option[String] = {
+    if (totalNumaNode == 0) return None
+    if (hostToContainers.containsKey(executorHostName)) {
+      if (!hostToContainers.get(executorHostName).contains(containerId)) {
+        this.synchronized {
+          val numaIds = hostToNumaIds.get(executorHostName)
+          val v = numaIds.zipWithIndex.min._2
+          logDebug(s"bind $containerId with $v on host $executorHostName")
+          hostToContainers.get(executorHostName) += (containerId -> v.toString)
+          numaIds(v) += 1
+          Some(v.toString)
+        }
+      } else {
+        hostToContainers.get(executorHostName).get(containerId)
+      }
+    } else {
+      logDebug(s"bind $containerId with 0 on host $executorHostName")
+      hostToNumaIds.put(executorHostName, Array.fill[Int](totalNumaNode)(0))
+      hostToNumaIds.get(executorHostName)(0) += 1
+      hostToContainers.putIfAbsent(executorHostName, mutable.HashMap[ContainerId, String](containerId -> "0"))
+      Some("0")
+    }
+  }
+
+  def releaseNuma(containerId: ContainerId, executorHostName: String): Unit = {
+    if (hostToContainers.get(executorHostName) != null) {
+      val numaIdToRelease = hostToContainers.get(executorHostName).getOrElseUpdate(containerId, "null")
+      logDebug(s"release $containerId with $numaIdToRelease on host $executorHostName")
+      hostToNumaIds.get(executorHostName)(numaIdToRelease.toInt) -= 1
+      hostToContainers.get(executorHostName).remove(containerId)
+    }
   }
 
 }
