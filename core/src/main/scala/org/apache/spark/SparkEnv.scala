@@ -32,7 +32,6 @@ import org.apache.spark.internal.config._
 import org.apache.spark.memory.{MemoryManager, StaticMemoryManager, UnifiedMemoryManager}
 import org.apache.spark.metrics.MetricsSystem
 import org.apache.spark.network.netty.NettyBlockTransferService
-import org.apache.spark.pmem.PersistentMemoryPlatform
 import org.apache.spark.rpc.{RpcEndpoint, RpcEndpointRef, RpcEnv}
 import org.apache.spark.scheduler.{LiveListenerBus, OutputCommitCoordinator}
 import org.apache.spark.scheduler.OutputCommitCoordinator.OutputCommitCoordinatorEndpoint
@@ -40,6 +39,7 @@ import org.apache.spark.security.CryptoStreamUtils
 import org.apache.spark.serializer.{JavaSerializer, Serializer, SerializerManager}
 import org.apache.spark.shuffle.ShuffleManager
 import org.apache.spark.storage._
+import org.apache.spark.unsafe.PersistentMemoryPlatform
 import org.apache.spark.util.{RpcUtils, Utils}
 
 /**
@@ -247,7 +247,7 @@ object SparkEnv extends Logging {
       }
 
       require(file.isDirectory(), "PMem directory is required for initialization")
-      PersistentMemoryPlatform.initialize(initPath, pmemInitialSize)
+      PersistentMemoryPlatform.initialize(initPath, pmemInitialSize, 0)
       logInfo(s"Intel Optane PMem initialized with path: ${initPath}, size: ${pmemInitialSize} ")
     }
 

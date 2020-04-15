@@ -1,14 +1,12 @@
-package org.apache.spark.pmem.memory;
+package org.apache.spark.unsafe.memory;
 
-import org.apache.spark.pmem.PersistentMemoryPlatform;
-import org.apache.spark.unsafe.memory.MemoryAllocator;
-import org.apache.spark.unsafe.memory.MemoryBlock;
+import org.apache.spark.unsafe.PersistentMemoryPlatform;
 
 public class PMemMemoryAllocator implements MemoryAllocator {
 
     @Override
     public MemoryBlock allocate(long size) throws OutOfMemoryError {
-        long address = PersistentMemoryPlatform.allocateMemory(size);
+        long address = PersistentMemoryPlatform.allocateVolatileMemory(size);
         MemoryBlock memoryBlock = new MemoryBlock(null, address, size);
         return memoryBlock;
     }
