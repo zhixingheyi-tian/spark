@@ -23,7 +23,10 @@ import java.util.Locale
 
 import scala.collection.mutable
 import scala.util.Properties
+
 import com.google.common.collect.MapMaker
+import com.intel.ssg.bdt.unsafe.PersistentMemoryPlatform
+
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
 import org.apache.spark.broadcast.BroadcastManager
@@ -39,7 +42,6 @@ import org.apache.spark.security.CryptoStreamUtils
 import org.apache.spark.serializer.{JavaSerializer, Serializer, SerializerManager}
 import org.apache.spark.shuffle.ShuffleManager
 import org.apache.spark.storage._
-import org.apache.spark.unsafe.PersistentMemoryPlatform
 import org.apache.spark.util.{RpcUtils, Utils}
 
 /**

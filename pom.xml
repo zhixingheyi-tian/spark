@@ -296,7 +296,7 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>org.apache.spark</groupId>
+        <groupId>com.intel.ssg.bdt</groupId>
         <artifactId>oap-common</artifactId>
         <version>${oap.common.version}</version>
       </dependency>

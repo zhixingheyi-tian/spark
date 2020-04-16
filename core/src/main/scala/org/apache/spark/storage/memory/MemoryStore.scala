@@ -26,6 +26,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 import com.google.common.io.ByteStreams
+import com.intel.ssg.bdt.unsafe.PersistentMemoryPlatform
 
 import org.apache.spark.{SparkConf, TaskContext}
 import org.apache.spark.internal.Logging
@@ -33,7 +34,6 @@ import org.apache.spark.internal.config.{UNROLL_MEMORY_CHECK_PERIOD, UNROLL_MEMO
 import org.apache.spark.memory.{MemoryManager, MemoryMode}
 import org.apache.spark.serializer.{SerializationStream, SerializerManager}
 import org.apache.spark.storage._
-import org.apache.spark.unsafe.PersistentMemoryPlatform
 import org.apache.spark.unsafe.Platform
 import org.apache.spark.unsafe.array.ByteArrayMethods
 import org.apache.spark.util.{SizeEstimator, Utils}
@@ -703,7 +703,7 @@ private class SerializedValuesHolder[T](
   val allocator = memoryMode match {
     case MemoryMode.ON_HEAP => ByteBuffer.allocate _
     case MemoryMode.OFF_HEAP => Platform.allocateDirectBuffer _
-    case MemoryMode.PMEM => PersistentMemoryPlatform.allocateDirectBuffer _
+    case MemoryMode.PMEM => PersistentMemoryPlatform.allocateVolatileDirectBuffer _
   }
 
   val redirectableStream = new RedirectableOutputStream
