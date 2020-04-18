@@ -59,7 +59,7 @@ private[spark] class UnifiedMemoryManager private[memory] (
     assert(onHeapExecutionMemoryPool.poolSize + onHeapStorageMemoryPool.poolSize == maxHeapMemory)
     assert(
       offHeapExecutionMemoryPool.poolSize + offHeapStorageMemoryPool.poolSize == maxOffHeapMemory)
-    assert(pmemStorageMemoryPool.poolSize == maxPMemStorageMemory)
+    assert(pmemStorageMemoryPool.poolSize == pmemStorageMemory)
   }
 
   assertInvariants()
@@ -73,7 +73,7 @@ private[spark] class UnifiedMemoryManager private[memory] (
   }
 
   override def maxPMemStorageMemory: Long = synchronized {
-    maxPMemStorageMemory
+    pmemStorageMemory
   }
 
   /**

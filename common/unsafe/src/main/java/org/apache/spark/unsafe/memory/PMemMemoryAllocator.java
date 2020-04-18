@@ -1,6 +1,6 @@
 package org.apache.spark.unsafe.memory;
 
-import com.intel.ssg.bdt.unsafe.PersistentMemoryPlatform;
+import com.intel.oap.unsafe.PersistentMemoryPlatform;
 
 public class PMemMemoryAllocator implements MemoryAllocator {
 

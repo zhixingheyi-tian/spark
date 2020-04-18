@@ -34,7 +34,7 @@
   <url>http://spark.apache.org/</url>
   <dependencies>
     <dependency>
-      <groupId>com.intel.ssg.bdt</groupId>
+      <groupId>com.intel</groupId>
       <artifactId>oap-common</artifactId>
     </dependency>
     <dependency>

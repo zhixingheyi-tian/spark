@@ -26,7 +26,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 import com.google.common.io.ByteStreams
-import com.intel.ssg.bdt.unsafe.PersistentMemoryPlatform
+import com.intel.oap.unsafe.PersistentMemoryPlatform
 
 import org.apache.spark.{SparkConf, TaskContext}
 import org.apache.spark.internal.Logging
@@ -579,6 +579,7 @@ private[spark] class MemoryStore(
       val unrollMemoryMap = memoryMode match {
         case MemoryMode.ON_HEAP => onHeapUnrollMemoryMap
         case MemoryMode.OFF_HEAP => offHeapUnrollMemoryMap
+        case MemoryMode.PMEM => pmemUnrollMemoryMap
       }
       if (unrollMemoryMap.contains(taskAttemptId)) {
         val memoryToRelease = math.min(memory, unrollMemoryMap(taskAttemptId))

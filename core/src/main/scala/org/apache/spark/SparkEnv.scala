@@ -25,7 +25,7 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import com.google.common.collect.MapMaker
-import com.intel.ssg.bdt.unsafe.PersistentMemoryPlatform
+import com.intel.oap.unsafe.PersistentMemoryPlatform
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
@@ -236,8 +236,8 @@ object SparkEnv extends Logging {
 
     val pmemInitialPaths = conf.get("spark.memory.pmem.initial.path", "").split(",")
     val pmemInitialSize = conf.getSizeAsBytes("spark.memory.pmem.initial.size", 0L)
-    if (!isDriver) {
-      val path = pmemInitialPaths(numaNodeId.get.toInt % 2)
+    if (!isDriver && pmemInitialPaths.size > 1) {
+      val path = pmemInitialPaths(numaNodeId.getOrElse(executorId).toInt % 2)
       val initPath = path + File.separator + s"executor_${executorId}" + File.pathSeparator
       val file = new File(initPath)
       if (file.exists() && file.isFile) {

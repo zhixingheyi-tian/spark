@@ -296,7 +296,7 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>com.intel.ssg.bdt</groupId>
+        <groupId>com.intel</groupId>
         <artifactId>oap-common</artifactId>
         <version>${oap.common.version}</version>
       </dependency>

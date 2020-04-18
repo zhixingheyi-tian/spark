@@ -66,7 +66,7 @@ private[spark] abstract class MemoryManager(
 
   private[this] val pmemInitialSize = conf.getSizeAsBytes("spark.memory.pmem.initial.size", 0L)
   private[this] val pmemUsableRatio = conf.getDouble("spark.memory.pmem.usable.ratio", 1.0)
-  private[this] val pmemStorageMemory = (pmemInitialSize * pmemUsableRatio).toLong
+  protected[this] val pmemStorageMemory = (pmemInitialSize * pmemUsableRatio).toLong
 
   pmemStorageMemoryPool.incrementPoolSize(pmemStorageMemory)
 
@@ -164,7 +164,6 @@ private[spark] abstract class MemoryManager(
       case MemoryMode.ON_HEAP => onHeapStorageMemoryPool.releaseMemory(numBytes)
       case MemoryMode.OFF_HEAP => offHeapStorageMemoryPool.releaseMemory(numBytes)
       case MemoryMode.PMEM => pmemStorageMemoryPool.releaseMemory(numBytes)
-
     }
   }
 

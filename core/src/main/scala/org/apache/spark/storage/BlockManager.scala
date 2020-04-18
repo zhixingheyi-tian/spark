@@ -18,7 +18,7 @@
 package org.apache.spark.storage
 
 import java.io._
-import java.lang.ref.{WeakReference, ReferenceQueue => JReferenceQueue}
+import java.lang.ref.{ReferenceQueue => JReferenceQueue, WeakReference}
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.util.Collections
@@ -33,10 +33,10 @@ import scala.util.Random
 import scala.util.control.NonFatal
 import com.codahale.metrics.{MetricRegistry, MetricSet}
 import com.google.common.io.CountingOutputStream
-import com.intel.ssg.bdt.unsafe.PersistentMemoryPlatform
+import com.intel.oap.unsafe.PersistentMemoryPlatform
 import org.apache.spark._
 import org.apache.spark.executor.{DataReadMethod, ShuffleWriteMetrics}
-import org.apache.spark.internal.{Logging, config}
+import org.apache.spark.internal.{config, Logging}
 import org.apache.spark.memory.{MemoryManager, MemoryMode}
 import org.apache.spark.metrics.source.Source
 import org.apache.spark.network._
