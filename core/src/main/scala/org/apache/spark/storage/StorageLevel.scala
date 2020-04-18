@@ -196,7 +196,8 @@ object StorageLevel {
     case "MEMORY_AND_DISK_SER" => MEMORY_AND_DISK_SER
     case "MEMORY_AND_DISK_SER_2" => MEMORY_AND_DISK_SER_2
     case "OFF_HEAP" => OFF_HEAP
-    case "PMEM" => PMEM_AND_DISK
+    case "PMEM_ONLY" => PMEM_ONLY
+    case "PMEM_AND_DISK" => PMEM_AND_DISK
     case _ => throw new IllegalArgumentException(s"Invalid StorageLevel: $s")
   }
 
