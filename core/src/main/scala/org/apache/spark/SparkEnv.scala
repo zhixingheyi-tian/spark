@@ -25,6 +25,7 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import com.google.common.collect.MapMaker
+import com.intel.oap.common.unsafe.PersistentMemoryPlatform
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory
@@ -214,6 +215,7 @@ object SparkEnv extends Logging {
     env
   }
 
+  // scalastyle:off
   /**
    * Helper method to create a SparkEnv for a driver or an executor.
    */
@@ -231,6 +233,25 @@ object SparkEnv extends Logging {
       mockOutputCommitCoordinator: Option[OutputCommitCoordinator] = None): SparkEnv = {
 
     val isDriver = executorId == SparkContext.DRIVER_IDENTIFIER
+
+    val pmemInitialPaths = conf.get("spark.memory.pmem.initial.path", "").split(",")
+    val pmemInitialSize = conf.getSizeAsBytes("spark.memory.pmem.initial.size", 0L)
+    if (!isDriver && pmemInitialPaths.size > 1) {
+      val path = pmemInitialPaths(numaNodeId.getOrElse(executorId).toInt % 2)
+      val initPath = path + File.separator + s"executor_${executorId}" + File.pathSeparator
+      val file = new File(initPath)
+      if (file.exists() && file.isFile) {
+        file.delete()
+      }
+
+      if (!file.exists()) {
+        file.mkdirs()
+      }
+
+      require(file.isDirectory(), "PMem directory is required for initialization")
+      PersistentMemoryPlatform.initialize(initPath, pmemInitialSize, 0)
+      logInfo(s"Intel Optane PMem initialized with path: ${initPath}, size: ${pmemInitialSize} ")
+    }
 
     // Listener bus is only used on the driver
     if (isDriver) {
