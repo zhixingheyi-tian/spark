@@ -25,7 +25,7 @@ import scala.collection.mutable
 import scala.util.Properties
 
 import com.google.common.collect.MapMaker
-import com.intel.oap.unsafe.PersistentMemoryPlatform
+import com.intel.oap.common.unsafe.PersistentMemoryPlatform
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.api.python.PythonWorkerFactory

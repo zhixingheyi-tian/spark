@@ -26,7 +26,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 import com.google.common.io.ByteStreams
-import com.intel.oap.unsafe.PersistentMemoryPlatform
+import com.intel.oap.common.unsafe.PersistentMemoryPlatform
 
 import org.apache.spark.{SparkConf, TaskContext}
 import org.apache.spark.internal.Logging
