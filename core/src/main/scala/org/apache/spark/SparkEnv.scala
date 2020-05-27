@@ -179,7 +179,6 @@ object SparkEnv extends Logging {
     create(
       conf,
       SparkContext.DRIVER_IDENTIFIER,
-      None,
       bindAddress,
       advertiseAddress,
       Option(port),
@@ -198,7 +197,6 @@ object SparkEnv extends Logging {
   private[spark] def createExecutorEnv(
       conf: SparkConf,
       executorId: String,
-      numaNodeId: Option[String],
       bindAddress: String,
       hostname: String,
       numCores: Int,
@@ -207,7 +205,6 @@ object SparkEnv extends Logging {
     val env = create(
       conf,
       executorId,
-      numaNodeId,
       bindAddress,
       hostname,
       None,
@@ -222,12 +219,11 @@ object SparkEnv extends Logging {
   private[spark] def createExecutorEnv(
       conf: SparkConf,
       executorId: String,
-      numaNodeId: Option[String],
       hostname: String,
       numCores: Int,
       ioEncryptionKey: Option[Array[Byte]],
       isLocal: Boolean): SparkEnv = {
-    createExecutorEnv(conf, executorId, numaNodeId, hostname,
+    createExecutorEnv(conf, executorId, hostname,
       hostname, numCores, ioEncryptionKey, isLocal)
   }
 
@@ -237,7 +233,6 @@ object SparkEnv extends Logging {
   private def create(
       conf: SparkConf,
       executorId: String,
-      numaNodeId: Option[String],
       bindAddress: String,
       advertiseAddress: String,
       port: Option[Int],

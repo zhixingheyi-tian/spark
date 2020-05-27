@@ -176,8 +176,6 @@ private[yarn] class YarnAllocator(
   private[yarn] val containerPlacementStrategy =
     new LocalityPreferredContainerPlacementStrategy(sparkConf, conf, resource, resolver)
 
-  private[yarn] val numaManager = new NumaManager(sparkConf)
-
   def getNumExecutorsRunning: Int = runningExecutors.size()
 
   def getNumReleasedContainers: Int = releasedContainers.size()
@@ -185,6 +183,14 @@ private[yarn] class YarnAllocator(
   def getNumExecutorsFailed: Int = failureTracker.numFailedExecutors
 
   def isAllNodeBlacklisted: Boolean = allocatorBlacklistTracker.isAllNodeBlacklisted
+
+  // The total number of numa node
+  private[yarn] val totalNumaNumber = sparkConf.get(SPARK_YARN_NUMA_NUMBER)
+  // Mapping from host to executor counter
+  private[yarn] case class NumaInfo(cotainer2numa: mutable.HashMap[String, Int],
+                                    numaUsed: Array[Int])
+
+  private[yarn] val hostToNumaInfo = new mutable.HashMap[String, NumaInfo]()
 
   /**
    * A sequence of pending container requests that have not yet been fulfilled.
@@ -534,12 +540,22 @@ private[yarn] class YarnAllocator(
     for (container <- containersToUse) {
       executorIdCounter += 1
       val executorHostname = container.getNodeId.getHost
+      // Setting the numa id that the executor should binding.
+      // new numaid binding method
+      val numaInfo = hostToNumaInfo.getOrElseUpdate(executorHostname,
+        NumaInfo(new mutable.HashMap[String, Int], new Array[Int](totalNumaNumber)))
+      val minUsed = numaInfo.numaUsed.min
+      val newNumaNodeId = numaInfo.numaUsed.indexOf(minUsed)
+      numaInfo.cotainer2numa.put(container.getId.toString, newNumaNodeId)
+      numaInfo.numaUsed(newNumaNodeId) += 1
+
+      val numaNodeId = newNumaNodeId.toString
+      logInfo(s"numaNodeId: $numaNodeId on host $executorHostname," +
+        "container: " + container.getId.toString +
+        ", minUsed: " + minUsed)
+
       val containerId = container.getId
       val executorId = executorIdCounter.toString
-
-      // Set the numa id that the executor should binding.
-      val numaNodeId = numaManager.assignNumaId(containerId, executorHostname)
-
       assert(container.getResource.getMemory >= resource.getMemory)
       logInfo(s"Launching container $containerId on host $executorHostname " +
         s"for executor with ID $executorId with numa ID $numaNodeId")
@@ -567,7 +583,7 @@ private[yarn] class YarnAllocator(
                 sparkConf,
                 driverUrl,
                 executorId,
-                numaNodeId,
+                Some(numaNodeId),
                 executorHostname,
                 executorMemory,
                 executorCores,
@@ -626,6 +642,17 @@ private[yarn] class YarnAllocator(
         // there are some exit status' we shouldn't necessarily count against us, but for
         // now I think its ok as none of the containers are expected to exit.
         val exitStatus = completedContainer.getExitStatus
+
+        var numaNodeId = -1
+        val hostName = hostOpt.getOrElse("nohost")
+        val numaInfoOp = hostToNumaInfo.get(hostName)
+        numaInfoOp match {
+          case Some(numaInfo) =>
+            numaNodeId = numaInfo.cotainer2numa.get(containerId.toString).getOrElse(-1)
+            if(-1 != numaNodeId) numaInfo.numaUsed(numaNodeId) -= 1
+          case _ => numaNodeId = -1
+        }
+
         val (exitCausedByApp, containerExitReason) = exitStatus match {
           case ContainerExitStatus.SUCCESS =>
             (false, s"Executor for container $containerId exited because of a YARN event (e.g., " +
@@ -696,7 +723,6 @@ private[yarn] class YarnAllocator(
         }
 
         allocatedContainerToHostMap.remove(containerId)
-        numaManager.releaseNuma(containerId, host)
       }
 
       containerIdToExecutorId.remove(containerId).foreach { eid =>
@@ -787,51 +813,6 @@ private[yarn] class YarnAllocator(
     }
 
     (localityMatched, localityUnMatched, localityFree)
-  }
-
-}
-
-// scalastyle:off
-// Manage how to bind numa with an exector. No matter numa binding turn on/off
-// we should assign a numa id since Persistent Memory always be associate with a numa id
-private[yarn] class NumaManager(sparkConf: SparkConf) extends Logging {
-  private final val totalNumaNode = sparkConf.get(SPARK_YARN_NUMA_NUM)
-  private val hostToNumaIds = new ConcurrentHashMap[String, Array[Int]]()
-  private val hostToContainers = new ConcurrentHashMap[String, mutable.HashMap[ContainerId, String]]()
-
-  def assignNumaId(
-                    containerId: ContainerId,
-                    executorHostName: String): Option[String] = {
-    if (totalNumaNode == 0) return None
-    if (hostToContainers.containsKey(executorHostName)) {
-      if (!hostToContainers.get(executorHostName).contains(containerId)) {
-        this.synchronized {
-          val numaIds = hostToNumaIds.get(executorHostName)
-          val v = numaIds.zipWithIndex.min._2
-          logDebug(s"bind $containerId with $v on host $executorHostName")
-          hostToContainers.get(executorHostName) += (containerId -> v.toString)
-          numaIds(v) += 1
-          Some(v.toString)
-        }
-      } else {
-        hostToContainers.get(executorHostName).get(containerId)
-      }
-    } else {
-      logDebug(s"bind $containerId with 0 on host $executorHostName")
-      hostToNumaIds.put(executorHostName, Array.fill[Int](totalNumaNode)(0))
-      hostToNumaIds.get(executorHostName)(0) += 1
-      hostToContainers.putIfAbsent(executorHostName, mutable.HashMap[ContainerId, String](containerId -> "0"))
-      Some("0")
-    }
-  }
-
-  def releaseNuma(containerId: ContainerId, executorHostName: String): Unit = {
-    if (hostToContainers.get(executorHostName) != null) {
-      val numaIdToRelease = hostToContainers.get(executorHostName).getOrElseUpdate(containerId, "null")
-      logDebug(s"release $containerId with $numaIdToRelease on host $executorHostName")
-      hostToNumaIds.get(executorHostName)(numaIdToRelease.toInt) -= 1
-      hostToContainers.get(executorHostName).remove(containerId)
-    }
   }
 
 }

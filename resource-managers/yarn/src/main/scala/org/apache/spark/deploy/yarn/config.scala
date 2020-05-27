@@ -164,10 +164,10 @@ package object config {
     .booleanConf
     .createWithDefault(false)
 
-  private[spark] val SPARK_YARN_NUMA_NUM = ConfigBuilder("spark.yarn.numa.num")
-    .doc("Specify numa node number in the host")
+  private[spark] val SPARK_YARN_NUMA_NUMBER = ConfigBuilder("spark.yarn.numa.number")
+    .doc("Total number of numanodes in physical server")
     .intConf
-    .createWithDefault(0)
+    .createWithDefault(2)
 
   private[spark] val WAIT_FOR_APP_COMPLETION = ConfigBuilder("spark.yarn.submit.waitAppCompletion")
     .doc("In cluster mode, whether to wait for the application to finish before exiting the " +
