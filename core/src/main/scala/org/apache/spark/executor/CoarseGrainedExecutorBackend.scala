@@ -330,9 +330,10 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       }
 
       driverConf.set(EXECUTOR_ID, arguments.executorId)
-      val env = SparkEnv.createExecutorEnv(driverConf, arguments.executorId, arguments.numaNodeId,
+      val env = SparkEnv.createExecutorEnv(driverConf, arguments.executorId,
         arguments.bindAddress, arguments.hostname, arguments.cores, cfg.ioEncryptionKey,
         isLocal = false)
+      SparkEnv.get.conf.set("spark.executor.numa.id", s"${arguments.numaNodeId.getOrElse(-1)}")
 
       env.rpcEnv.setupEndpoint("Executor",
         backendCreateFn(env.rpcEnv, arguments, env, cfg.resourceProfile))
