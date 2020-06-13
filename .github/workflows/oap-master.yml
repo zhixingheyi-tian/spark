@@ -1,12 +1,12 @@
-name: master
+name: oap-master
 
 on:
   push:
     branches:
-    - branch-3.0
+    - oap-master
   pull_request:
     branches:
-    - branch-3.0
+    - oap-master
 
 jobs:
   build:
