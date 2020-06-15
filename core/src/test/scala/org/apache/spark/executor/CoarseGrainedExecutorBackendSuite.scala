@@ -55,7 +55,8 @@ class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
     val env = createMockEnv(conf, serializer)
 
     // we don't really use this, just need it to get at the parser function
-    val backend = new CoarseGrainedExecutorBackend( env.rpcEnv, "driverurl", "1", None, "host1", "host1",
+    val backend = new CoarseGrainedExecutorBackend( env.rpcEnv,
+      "driverurl", "1", None, "host1", "host1",
       4, Seq.empty[URL], env, None, resourceProfile)
     withTempDir { tmpDir =>
       val testResourceArgs: JObject = ("" -> "")
@@ -76,7 +77,8 @@ class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
     val serializer = new JavaSerializer(conf)
     val env = createMockEnv(conf, serializer)
     // we don't really use this, just need it to get at the parser function
-    val backend = new CoarseGrainedExecutorBackend( env.rpcEnv, "driverurl", "1", None, "host1", "host1",
+    val backend = new CoarseGrainedExecutorBackend( env.rpcEnv,
+      "driverurl", "1", None, "host1", "host1",
       4, Seq.empty[URL], env, None, ResourceProfile.getOrCreateDefaultProfile(conf))
     withTempDir { tmpDir =>
       val ra = ResourceAllocation(EXECUTOR_GPU_ID, Seq("0", "1"))
@@ -110,7 +112,8 @@ class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
     val serializer = new JavaSerializer(conf)
     val env = createMockEnv(conf, serializer)
     // we don't really use this, just need it to get at the parser function
-    val backend = new CoarseGrainedExecutorBackend( env.rpcEnv, "driverurl", "1", None, "host1", "host1",
+    val backend = new CoarseGrainedExecutorBackend( env.rpcEnv,
+      "driverurl", "1", None, "host1", "host1",
       4, Seq.empty[URL], env, None, resourceProfile)
 
     withTempDir { tmpDir =>
@@ -268,7 +271,8 @@ class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
     val env = createMockEnv(conf, serializer)
 
     // we don't really use this, just need it to get at the parser function
-    val backend = new CoarseGrainedExecutorBackend(env.rpcEnv, "driverurl", "1", None, "host1", "host1",
+    val backend = new CoarseGrainedExecutorBackend(env.rpcEnv,
+      "driverurl", "1", None, "host1", "host1",
       4, Seq.empty[URL], env, None, resourceProfile)
     val gpuArgs = ResourceAllocation(EXECUTOR_GPU_ID, Seq("0", "1"))
     val ja = Extraction.decompose(Seq(gpuArgs))
